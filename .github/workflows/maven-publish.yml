@@ -1,0 +1,51 @@
+name: Publish to Maven Central
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/main/**'
+      - 'WORKSPACE'
+      - 'BUILD.bazel'
+      - '.bazelrc'
+      - '.bazelversion'
+  workflow_dispatch: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Build and Publish to Maven Central
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.JAVA_GPG_SECRET_KEY }}
+          passphrase: ${{ secrets.JAVA_GPG_PASSPHRASE }}
+
+      - name: Setup Maven settings
+        uses: s4u/maven-settings-action@v3.1.0
+        with:
+          servers: |
+            [{
+              "id": "central",
+              "username": "${{ secrets.OSSRH_USERNAME }}",
+              "password": "${{ secrets.OSSRH_PASSWORD }}"
+            }]
+
+      - name: Update POM version
+        run: |
+          cp pom.xml deploy-pom.xml
+          sed -i "s/<version>1.0.0<\/version>/<version>1.0.${{ github.run_number }}<\/version>/" deploy-pom.xml
+
+      - name: Publish to Maven Central
+        run: mvn clean deploy -q -f deploy-pom.xml -Dgpg.passphrase="${{ secrets.JAVA_GPG_PASSPHRASE }}"

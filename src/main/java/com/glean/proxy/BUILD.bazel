@@ -1,0 +1,27 @@
+load("@rules_java//java:defs.bzl", "java_binary", "java_library")
+
+package(default_visibility = ["//visibility:public"])
+
+java_binary(
+    name = "ProxyMain",
+    main_class = "com.glean.proxy.ProxyMain",
+    visibility = ["//visibility:public"],
+    runtime_deps = [
+        ":proxy",
+        "@maven//:org_slf4j_slf4j_jdk14",
+    ],
+)
+
+java_library(
+    name = "proxy",
+    srcs = glob(["*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/schemas",
+        "@maven//:io_github_littleproxy_littleproxy",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:io_netty_netty_transport",
+    ],
+)

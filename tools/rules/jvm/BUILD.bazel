@@ -1,0 +1,6 @@
+exports_files(
+    srcs = [
+        "rules_jvm.patch",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,18 @@
+# Redlist approach
+# Environment dot files are more likely to contain sensitive data
+**/.*
+# Even if test data, don't want to risk a real one getting indexed
+**/*.pem
+
+# Cursors dotfiles need to be unignored to make cursor checked in prompts work well
+!.cursorignore
+!.cursor/
+!.cursor/**/*
+
+# Github dotfiles should be unignored as these are CI runner code/configs
+!.github/
+!.github/**/*
+
+# Windsurf dotfiles can be references for better interoperability if there is no cursor equivalent
+!.windsurf/
+!.windsurf/**/*

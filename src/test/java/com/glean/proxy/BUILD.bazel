@@ -1,0 +1,34 @@
+load("@rules_java//java:defs.bzl", "java_test")
+
+java_test(
+    name = "ProxyNetworkingTest",
+    srcs = ["ProxyNetworkingTest.java"],
+    data = [],
+    resources = [],
+    tags = [],
+    test_class = "com.glean.proxy.ProxyNetworkingTest",
+    deps = [
+        "//src/main/java/com/glean/proxy",
+        "@maven//:io_github_littleproxy_littleproxy",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "FilterConfigurationTest",
+    srcs = ["FilterConfigurationTest.java"],
+    data = [],
+    resources = [],
+    tags = [],
+    test_class = "com.glean.proxy.FilterConfigurationTest",
+    deps = [
+        "//src/main/java/com/glean/proxy",
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/test/java/com/glean/proxy/test_utils",
+        "@maven//:io_github_littleproxy_littleproxy",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:io_netty_netty_transport",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)

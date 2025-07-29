@@ -1,0 +1,100 @@
+default_install_hook_types: ["pre-commit", "pre-push"]
+default_stages: ["pre-commit"]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: trailing-whitespace
+        stages: [ "pre-commit" ]
+  - repo: local
+    hooks:
+      - id: google-style-java
+        name: google-style-java
+        language: script
+        entry: "tools/format-java.sh"
+        files: '\.java$'
+  - repo: local
+    hooks:
+      - id: java-no-wildcard-imports
+        name: "Java no wildcard imports"
+        language: script
+        entry: tools/java-no-wildcard-imports.sh
+        files: '\.java$'
+  - repo: local
+    hooks:
+      - id: bazel-buildifier
+        name: "bazel buildifier"
+        entry: buildifier
+        files: '\.bazel$|\.bzl$|WORKSPACE'
+        args: ["-lint=fix"]
+        language: "system"
+        description: "Runs buildifier."
+  - repo: local
+    hooks:
+      - id: precommit-bazel-tests
+        name: "precommit bazel tests"
+        language: python
+        entry: "tools/precommit-bazel-tests.py"
+        description: Run bazel builds and tests when creating commits.
+        stages: [manual]
+  - repo: local
+    hooks:
+      - id: enforce-no-main-commit
+        name: enforce-no-main-commit
+        language: script
+        entry: "tools/enforce-no-main-commit.sh"
+        types: [file]
+        pass_filenames: false
+  - repo: local
+    hooks:
+      - id: base-branch-diff
+        name: base-branch-diff
+        language: script
+        entry: "tools/base-branch-diff.sh"
+        types: [file]
+        pass_filenames: false
+        stages: ["manual"] # used to be pre-push
+        verbose: true
+  - repo: local
+    hooks:
+      - id: 1_1_1_principle
+        name: "Ensures that the 1:1:1 rule is maintained"
+        entry: ./tools/java_refactor_scripts/ensure_1_1_1_java.py
+        language: python
+        stages: [ "pre-commit" ]
+        always_run: true
+        description: "Runs a check on all BUILD.bazel files modified to enforce the 1:1:1 rule in Java files"
+  - repo: local
+    hooks:
+      - id: gazelle-java
+        name: "Generate java rules"
+        entry: "tools/generate_java_rules.py"
+        language: python
+        stages: [ "pre-commit" ]
+        files: '^java/'
+        pass_filenames: false
+        description: "Runs gazelle java to generate BUILD files"
+  - repo: local
+    hooks:
+      - id: pmd
+        name: Java PMD
+        language: script
+        entry: "tools/lint/lint.sh"
+        files: '\.java$'
+        types: [file]
+        args: ["--fail-on-violation"]
+  - repo: local
+    hooks:
+      - id: sync-main-and-test
+        name: "Ensure src/main/java/ and src/test/java/ folders are in sync"
+        entry: "tools/java_refactor_scripts/sync_java_tests.py"
+        language: python
+        stages: [ "pre-commit" ]
+        files: '^java/'
+        always_run: true
+        description: "Runs a check to ensure we move/rename test targets on changes to src files"

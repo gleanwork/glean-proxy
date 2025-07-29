@@ -1,0 +1,229 @@
+diff --git a/java/gazelle/generate.go b/java/gazelle/generate.go
+index 98d8335..6b52628 100644
+--- a/java/gazelle/generate.go
++++ b/java/gazelle/generate.go
+@@ -79,6 +79,10 @@ func (l javaLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
+ 		log.Fatal().Err(err).Str("package", args.Rel).Msg("Failed to parse package")
+ 	}
+
++	// Patch to skip adding exports for us
++	exportedClasses := sorted_set.NewSortedSetFn([]types.ClassName{}, types.ClassNameLess)
++	javaPkg.ExportedClasses = exportedClasses
++
+ 	// We exclude intra-package imports to avoid self-dependencies.
+ 	// This isn't a great heuristic for a few reasons:
+ 	//  1. We may want to split targets with more granularity than per-package.
+@@ -530,6 +534,71 @@ func (l javaLang) generateJavaBinary(file *rule.File, m types.ClassName, libName
+ 	})
+ }
+
++// getFileSpecificImports uses the Java parser to get exact imports for a specific file
++func (l javaLang) getFileSpecificImports(filePath string, pathToPackageRelativeToBazelWorkspace string, allImports *sorted_set.SortedSet[types.PackageName]) *sorted_set.SortedSet[types.PackageName] {
++	// Create a new set for file-specific imports
++	fileImports := sorted_set.NewSortedSetFn([]types.PackageName{}, types.PackageNameLess)
++
++	// Extract the relative path of the file within the package
++	relPath := strings.TrimPrefix(filepath.ToSlash(filePath), filepath.ToSlash(pathToPackageRelativeToBazelWorkspace+"/"))
++
++	// Use the Java parser to parse just this single file
++	// This uses the same parser that's used for the entire package
++	l.logger.Info().Str("file", relPath).Str("package", pathToPackageRelativeToBazelWorkspace).Msg("Parsing file for imports")
++
++	// Create a ParsePackageRequest with just this single file
++	javaPkg, err := l.parser.ParsePackage(context.Background(), &javaparser.ParsePackageRequest{
++		Rel:   pathToPackageRelativeToBazelWorkspace,
++		Files: []string{relPath},
++	})
++
++	if err != nil {
++		// If we can't parse the file, fall back to using all imports
++		l.logger.Warn().Err(err).Str("file", relPath).Msg("Failed to parse file for import analysis, using package-wide imports")
++		return allImports
++	}
++
++	// Extract class names from the file path for filtering self-references
++	baseName := filepath.Base(relPath)
++	className := strings.TrimSuffix(baseName, ".java")
++	localClasses := sorted_set.NewSortedSet([]string{className})
++
++	// Filter and add imported classes (same logic as addFilteringOutOwnPackage)
++	for _, importedClass := range javaPkg.ImportedClasses.SortedSlice() {
++		// Skip self-references
++		if javaPkg.Name == importedClass.PackageName() {
++			if localClasses.Contains(importedClass.BareOuterClassName()) {
++				continue
++			}
++		}
++
++		if importedClass.PackageName().Name == "" {
++			continue
++		}
++
++		fileImports.Add(importedClass.PackageName())
++	}
++
++	// Filter and add imported packages without specific classes
++	// We don't need to filter these for self-references since they're wildcard imports
++	// and the Java parser already handles this
++	fileImports.AddAll(javaPkg.ImportedPackagesWithoutSpecificClasses)
++
++	// If no imports were found, fall back to using all imports
++	if fileImports.Len() == 0 {
++		l.logger.Debug().Str("file", filePath).Msg("No imports found in file, using package-wide imports")
++		return allImports
++	}
++
++	// Add standard imports for test files
++	// if strings.HasSuffix(filepath.Base(relPath), "Test.java") || strings.Contains(relPath, "javatests/") {
++	// 	fileImports.Add(types.NewPackageName("org.junit"))
++	// 	fileImports.Add(types.NewPackageName("org.junit.jupiter.api"))
++	// }
++
++	return fileImports
++}
++
+ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazelWorkspace string, mavenRepositoryName string, f javaFile, includePackageInName bool, imports *sorted_set.SortedSet[types.PackageName], annotationProcessorClasses *sorted_set.SortedSet[types.ClassName], depOnTestHelpers *string, wrapper string, extraAttributes map[string]bzl.Expr, res *language.GenerateResult) {
+ 	className := f.ClassName()
+ 	fullyQualifiedTestClass := className.FullyQualifiedClassName()
+@@ -584,8 +651,31 @@ func (l javaLang) generateJavaTest(file *rule.File, pathToPackageRelativeToBazel
+ 	}
+
+ 	res.Gen = append(res.Gen, r)
+-	testImports := imports.Clone()
++
++	// The 'imports' parameter here is actually testJavaImportsWithHelpers, which already includes
++	// both regular test imports and test helper imports. We need to preserve this behavior.
++
++	// Get file-specific imports
++	fileImports := l.getFileSpecificImports(f.pathRelativeToBazelWorkspaceRoot, pathToPackageRelativeToBazelWorkspace, imports)
++
++	// Clone to avoid modifying the original
++	testImports := fileImports.Clone()
+ 	testImports.Add(f.pkg)
++
++	// Add any test helper imports that might be in the original imports parameter
++	// but not in our file-specific imports
++	for _, helperImport := range imports.SortedSlice() {
++		// Skip imports that are already in our file-specific imports
++		if !testImports.Contains(helperImport) {
++			// Check if this is likely a test helper import
++			if strings.Contains(helperImport.Name, "helper") ||
++			   strings.Contains(helperImport.Name, "util") ||
++			   strings.Contains(helperImport.Name, "mock") {
++				testImports.Add(helperImport)
++				l.logger.Debug().Str("helper_import", helperImport.Name).Str("test_class", fullyQualifiedTestClass).Msg("Adding test helper import")
++			}
++		}
++	}
+
+ 	resolveInput := types.ResolveInput{
+ 		PackageNames:         sorted_set.NewSortedSetFn([]types.PackageName{f.pkg}, types.PackageNameLess),
+@@ -681,7 +773,7 @@ func labelsToStrings(labels []label.Label) []string {
+ }
+
+ func testHelperLibname(targetName string) string {
+-	return targetName + "-test-lib"
++	return targetName
+ }
+
+ func ptr[T any](v T) *T {
+diff --git a/java/gazelle/private/java/java.go b/java/gazelle/private/java/java.go
+index 88e6a2c..bd929fc 100644
+--- a/java/gazelle/private/java/java.go
++++ b/java/gazelle/private/java/java.go
+@@ -137,7 +137,9 @@ var stdlibPrefixes = []types.PackageName{
+ 	types.NewPackageName("javax.swing"),
+ 	types.NewPackageName("javax.tools"),
+ 	types.NewPackageName("javax.transaction.xa"),
+-	types.NewPackageName("javax.xml"),
++	types.NewPackageName("javax.xml.parsers"),
++	types.NewPackageName("javax.xml.transform"),
++	types.NewPackageName("javax.xml.datatype"),
+ 	types.NewPackageName("jdk"),
+ 	types.NewPackageName("netscape.javascript"),
+ 	types.NewPackageName("org.ietf.jgss"),
+diff --git a/java/gazelle/resolve.go b/java/gazelle/resolve.go
+index 7d0e6c8..3fa8818 100644
+--- a/java/gazelle/resolve.go
++++ b/java/gazelle/resolve.go
+@@ -113,6 +113,23 @@ func (jr *Resolver) populateAttr(c *config.Config, pc *javaconfig.Config, r *rul
+
+ 		labels.Add(simplifyLabel(c.RepoName, dep, from))
+ 	}
++	if isTestRule && attrName == "deps" && (r.Kind() == "java_binary" || r.Kind() == "java_test" || r.Kind() == "java_junit5_test") {
++		var baseLabel label.Label;
++
++		baseLabel.Repo = "com_github_gleanwork_glean-proxy"
++		packageNameSplit := strings.Split(from.String(), "//")
++		packageNameWithTarget := strings.Split(packageNameSplit[1], ":")
++		baseLabel.Pkg = strings.ReplaceAll(packageNameWithTarget[0],"javatests/", "java/")
++		splitName := strings.Split(packageNameWithTarget[0], "/")
++		baseLabel.Name = splitName[len(splitName)-1]
++		baseLabel.Relative = false
++
++		jr.lang.logger.Warn().
++		Str("Name", baseLabel.Name).
++		Str("Pkg", baseLabel.Pkg).
++		Msg("Adding src pkg as dep for test target")
++		labels.Add(simplifyLabel(c.RepoName, baseLabel, from))
++	}
+
+ 	setLabelAttrIncludingExistingValues(r, attrName, labels)
+ }
+@@ -275,17 +292,38 @@ func (jr *Resolver) resolveSinglePackage(c *config.Config, pc *javaconfig.Config
+ 			cacheKey = testsuiteCacheKey
+ 			l := testsuiteMatches[0].Label
+ 			if l != from {
+-				l.Name += "-test-lib"
++				// l.Name += "-test-lib"
+ 				return simplifyLabel(c.RepoName, l, from)
+ 			}
+ 		}
+ 	}
+
+-	if isTestRule && ownPackageNames.Contains(imp) {
+-		// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
+-		return label.NoLabel
+-	}
++	// if isTestRule && ownPackageNames.Contains(imp) {
++	// 	// Tests may have unique packages which don't exist outside of those tests - don't treat this as an error.
++	// 	return label.NoLabel
++	// }
++
++	if strings.HasPrefix(imp.Name, "com.glean") {
++		jr.lang.logger.Warn().
++			Str("package", imp.Name).
++			Str("from rule", from.String()).
++			Msg("Unable to determine exact package for import in any dependency. Making a best effort guess")
++
++		var returnLabel label.Label;
++		returnLabel.Repo = "com_github_gleanwork_glean-proxy"
++		returnLabel.Pkg = strings.ReplaceAll(imp.Name, ".", "/")
++		splitName := strings.Split(imp.Name, ".")
++		returnLabel.Name = splitName[len(splitName)-1]
++		returnLabel.Relative = false
++
++		if strings.Contains(imp.Name, "test_utils") || strings.Contains(imp.Name, "testutils") {
++			returnLabel.Pkg = "javatests/" + returnLabel.Pkg
++		} else if !strings.HasPrefix(returnLabel.Pkg, "java") && !strings.HasPrefix(returnLabel.Pkg, "javatests") {
++			returnLabel.Pkg = "java/" + returnLabel.Pkg
++		}
+
++		return returnLabel
++	}
+ 	jr.lang.logger.Warn().
+ 		Str("package", imp.Name).
+ 		Str("from rule", from.String()).
+diff --git a/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/ClasspathParser.java b/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/ClasspathParser.java
+index c2e25ab..148e9a7 100644
+--- a/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/ClasspathParser.java
++++ b/java/src/com/github/bazel_contrib/contrib_rules_jvm/javaparser/generators/ClasspathParser.java
+@@ -402,7 +402,7 @@ public class ClasspathParser {
+           usedTypes.add(importedType);
+           types.add(importedType);
+         } else if (components.size() > 1) {
+-          usedTypes.add(typeName);
++          //usedTypes.add(typeName);
+           types.add(typeName);
+         }
+       } else if (identifier.getKind() == Tree.Kind.PARAMETERIZED_TYPE) {

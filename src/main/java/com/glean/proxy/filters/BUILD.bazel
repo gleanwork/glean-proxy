@@ -1,0 +1,20 @@
+load("@rules_java//java:defs.bzl", "java_library")
+
+package(default_visibility = ["//visibility:public"])
+
+java_library(
+    name = "filters",
+    srcs = glob(["*.java"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/schemas",
+        "@maven//:com_google_code_gson_gson",
+        "@maven//:io_github_littleproxy_littleproxy",
+        "@maven//:io_netty_netty_buffer",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:io_netty_netty_common",
+        "@maven//:io_netty_netty_handler",
+        "@maven//:io_netty_netty_transport",
+    ],
+)

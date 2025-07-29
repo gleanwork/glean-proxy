@@ -1,0 +1,39 @@
+name: Publish OCI Image Tarball
+concurrency:
+  # ensure only one instance of this workflow is running at a time for a given PR
+  group: ${{ github.workflow }}-${{ github.event.number}}
+  cancel-in-progress: true
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    name: Publish OCI Image Tarball
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: true
+          repository-cache: WORKSPACE
+
+      - name: Build Image Tarball with Bazel
+        run: |
+          bazel build //:proxy_image_tarball
+          cp .bazel/bin/load_proxy_image/tarball.tar proxy_image_tarball.tar
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "build-${{ github.run_number }}"
+          name: "GleanProxy OCI Image"
+          files: "proxy_image_tarball.tar"
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

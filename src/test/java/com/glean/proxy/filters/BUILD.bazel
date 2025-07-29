@@ -1,0 +1,58 @@
+load("@rules_java//java:defs.bzl", "java_test")
+
+package(default_visibility = ["//visibility:public"])
+
+java_test(
+    name = "AwsDisallowInternalAddressForTransitVpcTest",
+    srcs = ["AwsDisallowInternalAddressForTransitVpcTest.java"],
+    test_class = "com.glean.proxy.filters.AwsDisallowInternalAddressForTransitVpcTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/test/java/com/glean/proxy/test_utils",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "AwsFilterEgressTrafficByDomainTest",
+    srcs = ["AwsFilterEgressTrafficByDomainTest.java"],
+    test_class = "com.glean.proxy.filters.AwsFilterEgressTrafficByDomainTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/test/java/com/glean/proxy/test_utils",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "GCPDisallowInternalAddressFilterTest",
+    srcs = ["GCPDisallowInternalAddressFilterTest.java"],
+    test_class = "com.glean.proxy.filters.GCPDisallowInternalAddressFilterTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/test/java/com/glean/proxy/test_utils",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "ProxyDebugFilterTest",
+    srcs = ["ProxyDebugFilterTest.java"],
+    test_class = "com.glean.proxy.filters.ProxyDebugFilterTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters",
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/schemas",
+        "@maven//:com_google_code_gson_gson",
+        "@maven//:io_netty_netty_codec_http",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)

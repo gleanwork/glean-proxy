@@ -1,0 +1,6 @@
+# General rules
+- if an /agent command prefix is specified, search for the command within this file, .windsurfrules, or any other file that .windsurfrules points to in order to load execution context
+
+# General code style rules
+- Do not generate useless comments. Comments should not be obvious. Comments should explain why, not what
+- Also load in tools/prompts/general_code.md

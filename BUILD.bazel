@@ -1,0 +1,70 @@
+load("@aspect_bazel_lib//lib:tar.bzl", "tar")
+load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle", "gazelle_binary")
+load(
+    "@bazel_tools//tools/jdk:default_java_toolchain.bzl",
+    "BASE_JDK9_JVM_OPTS",
+    "DEFAULT_TOOLCHAIN_CONFIGURATION",
+    "default_java_toolchain",
+)
+load("@rules_java//java:java_plugin.bzl", "java_plugin")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_load")
+
+package(default_visibility = ["//visibility:public"])
+
+default_java_toolchain(
+    name = "jdk17_toolchain",
+    configuration = DEFAULT_TOOLCHAIN_CONFIGURATION,
+    jvm_opts = BASE_JDK9_JVM_OPTS + ["-XX:-MaxFDLimit"],
+    source_version = "17",
+    target_version = "17",
+)
+
+java_plugin(
+    name = "nullaway",
+    deps = [
+        "@maven//:com_uber_nullaway_nullaway",
+    ],
+)
+
+exports_files([".pmd-java-ruleset.xml"])
+
+# gazelle:exclude .bazel
+gazelle(
+    name = "gazelle_java",
+    gazelle = ":gazelle_bin",
+)
+
+gazelle_binary(
+    name = "gazelle_bin",
+    languages = DEFAULT_LANGUAGES + [
+        "@contrib_rules_jvm//java/gazelle",
+    ],
+)
+
+tar(
+    name = "proxy_main_tar",
+    srcs = ["//src/main/java/com/glean/proxy:ProxyMain_deploy.jar"],
+)
+
+oci_image(
+    name = "proxy_image",
+    base = "@distroless_java17",
+    entrypoint = [
+        "java",
+        "-jar",
+        "/src/main/java/com/glean/proxy/ProxyMain_deploy.jar",
+    ],
+    tars = [":proxy_main_tar"],
+)
+
+oci_load(
+    name = "load_proxy_image",
+    image = ":proxy_image",
+    repo_tags = ["glean-proxy:latest"],
+)
+
+filegroup(
+    name = "proxy_image_tarball",
+    srcs = [":load_proxy_image"],
+    output_group = "tarball",
+)

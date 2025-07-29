@@ -1,0 +1,36 @@
+load("@rules_java//java:defs.bzl", "java_test")
+
+package(default_visibility = ["//visibility:public"])
+
+java_test(
+    name = "CachedNicResolverTest",
+    srcs = ["CachedNicResolverTest.java"],
+    test_class = "com.glean.proxy.filters.helpers.CachedNicResolverTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "IpRouteNicResolverTest",
+    srcs = ["IpRouteNicResolverTest.java"],
+    test_class = "com.glean.proxy.filters.helpers.IpRouteNicResolverTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/schemas",
+        "@maven//:org_assertj_assertj_core",
+        "@maven//:org_mockito_mockito_core",
+    ],
+)
+
+java_test(
+    name = "OnPremisesProxyTest",
+    srcs = ["OnPremisesProxyTest.java"],
+    test_class = "com.glean.proxy.filters.helpers.OnPremisesProxyTest",
+    deps = [
+        "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/test/java/com/glean/proxy/test_utils",
+    ],
+)

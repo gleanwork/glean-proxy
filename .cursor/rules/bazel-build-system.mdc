@@ -1,0 +1,39 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Bazel Build System Guide
+
+## Bazel Configuration
+
+### Core Configuration Files
+- **Workspace**: [WORKSPACE](mdc:WORKSPACE) - Main workspace configuration with external dependencies
+- **Root Build**: [BUILD.bazel](mdc:BUILD.bazel) - Root build targets and rules
+
+### Development Workflow
+
+#### Common Commands
+```bash
+# Build proxy entrypoint
+bazel build //src/main/java/com/glean/proxy:ProxyMain
+
+# Run tests
+bazel test //...
+
+# Clean build cache
+bazel clean
+bazel clean --expunge
+```
+
+### Configuration Management
+- **External Repositories**: Managed through WORKSPACE
+- **Build Settings**: Configured through .bazelrc files
+- **Platform Support**: Multi-platform builds (Darwin, Linux)
+
+### Development Tips
+- Use `bazel query` to explore the dependency graph
+- Leverage `bazel run` for executable targets
+- Use `--keep_going` to continue builds after failures
+- Monitor build performance with `--profile`
+- Use `bazel sync` to update external dependencies

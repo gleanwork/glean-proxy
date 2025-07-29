@@ -1,0 +1,93 @@
+common --noenable_bzlmod
+common --color=yes
+common --enable_platform_specific_config
+
+build --javacopt='-Xep:DoubleBraceInitialization:OFF'
+build --host_javacopt='-Xep:DoubleBraceInitialization:OFF'
+
+build --javacopt='-Xep:NullArgumentForNonNullParameter:OFF'
+build --host_javacopt='-Xep:NullArgumentForNonNullParameter:OFF'
+
+build --javacopt='-Xlint:-options'
+build --host_javacopt='-Xlint:-options'
+
+build --javacopt='-Xep:BoxedPrimitiveEquality:OFF'
+build --host_javacopt='-Xep:BoxedPrimitiveEquality:OFF'
+
+build --javacopt='-Xep:ComparisonOutOfRange:OFF'
+build --host_javacopt='-Xep:ComparisonOutOfRange:OFF'
+
+build --javacopt='-Xep:ImpossibleNullComparison:OFF'
+build --host_javacopt='-Xep:ImpossibleNullComparison:OFF'
+
+build --javacopt='-Xep:GuardedBy:OFF'
+build --host_javacopt='-Xep:GuardedBy:OFF'
+
+build --java_language_version=17
+build --tool_java_language_version=17
+build --tool_java_runtime_version=remotejdk_17
+build --java_runtime_version=remotejdk_17
+
+# Ensure we use the hermetic C++ toolchain.
+# This flag was flipped in Bazel 7, eariler it was --incompatible....
+build --noincompatible_enable_cc_toolchain_resolution
+
+build --noincompatible_sandbox_hermetic_tmp
+run --noincompatible_sandbox_hermetic_tmp
+test --noincompatible_sandbox_hermetic_tmp
+
+build --noincompatible_disallow_unsound_directory_outputs
+run --noincompatible_disallow_unsound_directory_outputs
+test --noincompatible_disallow_unsound_directory_outputs
+
+build --symlink_prefix=.bazel/
+
+###
+# Performance fixes from https://github.com/aspect-build/bazel-examples/blob/main/bazelrc/.bazelrc
+##
+# Consider --experimental_remote_merkle_tree_cache_size as well
+build --experimental_remote_merkle_tree_cache
+query --experimental_remote_merkle_tree_cache
+build --noexperimental_check_output_files
+fetch --noexperimental_check_output_files
+query --noexperimental_check_output_files
+build --incompatible_remote_results_ignore_disk
+# Improve performance of sandbox by skipping the older my_repo/external/other_repo symlinks.
+build --nolegacy_external_runfiles
+
+# Make it easier to see test failure messages.
+test --test_output=errors
+
+build --nojava_header_compilation
+
+# Citation: https://docs.aspect.build/rules/rules_nodejs/docs/debugging/. Verbose, uncached output
+# Example: bazel test --config=debug //...
+test:debug --test_output=streamed --test_strategy=exclusive --test_timeout=9999 --nocache_test_results --define=VERBOSE_LOGS=1
+
+# Note: test is a subset of build, so applies to test too
+build --jobs=HOST_CPUS-1
+
+# Tests should opt into network access per-target.
+# See https://docs.aspect.build/tutorial/operations/#prevent-build-and-test-actions-from-accumulating-dependencies-on-the-network
+test --sandbox_default_allow_network=false
+
+# Allow local customization.
+try-import %workspace%/.bazelrc.user
+
+# BEGIN COPY-PASTA OF https://docs.aspect.build/guides/bazelrc/#convenience-options
+
+# Output a heap dump if an OOM is thrown during a Bazel invocation
+# (including OOMs due to `--experimental_oom_more_eagerly_threshold`).
+# The dump will be written to `<output_base>/<invocation_id>.heapdump.hprof`.
+# You may need to configure CI to capture this artifact and upload for later use.
+# Docs: https://bazel.build/reference/command-line-reference#flag--heap_dump_on_oom
+common --heap_dump_on_oom
+
+build:macos --incompatible_default_to_explicit_init_py
+build:macos --extra_toolchains=//:jdk17_toolchain_definition
+
+test:macos --test_tag_filters=-linuxonly
+
+build --experimental_remote_cache_eviction_retries=2
+build --remote_retries=2
+build --remote_timeout=300

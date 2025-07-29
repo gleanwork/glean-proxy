@@ -1,0 +1,30 @@
+name: Bazel Test Runner
+concurrency:
+  # ensure only one instance of this workflow is running at a time for a given PR
+  group: ${{ github.workflow }}-${{ github.event.number }}
+  cancel-in-progress: true
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    if: ${{ github.head_ref != 'main' }}
+    runs-on: ubuntu-latest
+    name: Run Bazel Tests
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-cache: true
+          disk-cache: true
+          repository-cache: WORKSPACE
+
+      - name: Run tests
+        run: bazel test //...

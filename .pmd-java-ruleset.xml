@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<ruleset name="Minimal Java PMD ruleset">
+    <!-- To suppress PMD checks for a particular line, append it with the comment: // NOPMD -->
+    <!-- You can suppress warnings by using @SuppressWarnings({"PMD.ProperLogger"}) as a wrapper on top of the class-->
+    <description>Minimal Java PMD ruleset</description>
+
+    <!-- Browse rules here: https://pmd.github.io/latest/pmd_rules_java.html -->
+
+    <!-- Style rules. Keep sorted -->
+    <rule ref="category/java/codestyle.xml/ControlStatementBraces" />
+
+    <!-- Prevents using == comparison for Strings. -->
+    <!-- https://pmd.github.io/latest/pmd_rules_java_errorprone.html#compareobjectswithequals -->
+    <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals" />
+
+    <!-- Catches System.out.println left behind in code -->
+    <!-- https://pmd.github.io/latest/pmd_rules_java_bestpractices.html#systemprintln -->
+    <rule ref="category/java/bestpractices.xml/SystemPrintln" />
+</ruleset>

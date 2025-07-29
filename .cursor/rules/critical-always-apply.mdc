@@ -1,0 +1,21 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# AMPLIFIED general rules. These are in general_code.md, but repeated for emphasis
+- ASSUME you are writing production code, not tutorials for newbies
+- NEVER add obvious comments. Comments should explain why not what
+- prefer to inline single-use variables. Do not add intermediate variables unless they are reused, or help readability
+
+# AMPLIFIED git rules. These are in git_helpers.md, but repeated for emphasis
+- NEVER --no-verify
+- NEVER add untracked files. The user will intentionally decide
+- ALWAYS ask for permission before force pushing, pulling, or rebasing
+- ALWAYS ask for permission before --amend. Adding to commit history is okay, and commits can be trash.
+
+# Files to ALWAYS load
+- load tools/prompts/general_code.md
+
+# Claude code
+- DO NOT EXECUTE CLAUDE CODE ANY OTHER WAY. If the user asks to run a task in claude code, use `claude -p "$someTaskPrompt" --output-format json`
