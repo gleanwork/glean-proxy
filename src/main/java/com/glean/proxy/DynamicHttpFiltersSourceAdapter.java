@@ -1,11 +1,8 @@
 package com.glean.proxy;
 
 import com.glean.proxy.filters.CompositeFilter;
-import com.glean.proxy.filters.HttpNotFoundFilter;
 import com.glean.proxy.filters.InvalidCloudPlatformFilter;
-import com.glean.proxy.filters.LegacyRequestFilter;
 import com.glean.proxy.filters.LivenessCheckRequestFilter;
-import com.glean.proxy.filters.helpers.OnPremisesProxy;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import java.util.ArrayList;
@@ -21,7 +18,6 @@ public class DynamicHttpFiltersSourceAdapter extends HttpFiltersSourceAdapter {
 
   private static final Logger logger =
       Logger.getLogger(DynamicHttpFiltersSourceAdapter.class.getName());
-  private final OnPremisesProxy legacyProxy = OnPremisesProxy.fromEnvironment();
   private final String cloudPlatform = System.getenv("CLOUD_PLATFORM");
 
   private final List<BiFunction<HttpRequest, ChannelHandlerContext, HttpFilters>> awsFilters;
@@ -59,13 +55,6 @@ public class DynamicHttpFiltersSourceAdapter extends HttpFiltersSourceAdapter {
               .map(filterConstructor -> filterConstructor.apply(originalRequest, ctx))
               .collect(Collectors.toCollection(ArrayList::new));
       return new CompositeFilter(originalRequest, filters);
-    } else if (originalRequest.uri().startsWith("/proxy")) {
-      if (legacyProxy != null) {
-        return new LegacyRequestFilter(originalRequest, legacyProxy);
-      } else {
-        logger.fine("Using HttpNotFoundFilter as legacy proxy is null");
-        return new HttpNotFoundFilter(originalRequest);
-      }
     }
 
     return switch (cloudPlatform) {

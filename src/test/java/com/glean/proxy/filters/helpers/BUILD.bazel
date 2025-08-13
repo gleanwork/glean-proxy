@@ -24,13 +24,3 @@ java_test(
         "@maven//:org_mockito_mockito_core",
     ],
 )
-
-java_test(
-    name = "OnPremisesProxyTest",
-    srcs = ["OnPremisesProxyTest.java"],
-    test_class = "com.glean.proxy.filters.helpers.OnPremisesProxyTest",
-    deps = [
-        "//src/main/java/com/glean/proxy/filters/helpers",
-        "//src/test/java/com/glean/proxy/test_utils",
-    ],
-)
