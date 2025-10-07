@@ -196,8 +196,9 @@ maven_install(
     artifacts = [
         "org.assertj:assertj-core:3.24.2",
         "com.google.code.gson:gson:2.10.1",
-        "io.github.littleproxy:littleproxy:2.4.2",
-        "io.netty:netty-codec-http:4.1.119.Final",
+        # This was downgraded, so we can keep netty at 4.1.*
+        "io.github.littleproxy:littleproxy:2.4.0",
+        "io.netty:netty-codec-http:4.1.127.Final",
         "org.apache.httpcomponents:httpclient:4.5.14",
         "com.uber.nullaway:nullaway:0.10.9",
         "org.mockito:mockito-core:5.12.0",
