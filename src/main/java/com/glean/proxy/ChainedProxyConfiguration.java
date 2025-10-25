@@ -29,7 +29,12 @@ public class ChainedProxyConfiguration {
         Queue<ChainedProxy> chainedProxies,
         ClientDetails clientDetails) -> {
             String hostHeader = httpRequest.headers().get("Host");
-            String host = hostHeader != null ? hostHeader.split(":")[0] : "";
+            if (hostHeader == null) {
+                chainedProxies.add(ChainedProxyAdapter.FALLBACK_TO_DIRECT_CONNECTION);
+                logger.severe("No host header found, falling back to direct connection");
+                return;
+            }
+            String host = hostHeader.split(":")[0];
             
             if (dataSourceHosts.contains(host)) {
                 chainedProxies.add(new ChainedProxyAdapter() {
