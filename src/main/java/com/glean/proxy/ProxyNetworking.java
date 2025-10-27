@@ -2,6 +2,7 @@ package com.glean.proxy;
 
 import java.net.InetSocketAddress;
 import java.util.logging.Logger;
+import org.littleshoot.proxy.ChainedProxyManager;
 import org.littleshoot.proxy.HttpProxyServer;
 import org.littleshoot.proxy.impl.DefaultHttpProxyServer;
 import org.littleshoot.proxy.impl.ThreadPoolConfiguration;
@@ -11,6 +12,7 @@ public class ProxyNetworking {
 
   protected final ThreadPoolConfiguration threadPoolConfiguration;
   protected final FilterConfiguration filterConfiguration;
+  protected final ChainedProxyManager chainedProxyManager;
 
   public void run(int port) {
     DynamicHttpFiltersSourceAdapter filtersSource =
@@ -23,6 +25,7 @@ public class ProxyNetworking {
             .withIdleConnectionTimeout(1200) // seconds
             .withThreadPoolConfiguration(threadPoolConfiguration)
             .withFiltersSource(filtersSource)
+            .withChainProxyManager(chainedProxyManager)
             .start();
     try {
       Thread.sleep(Long.MAX_VALUE);
@@ -35,6 +38,7 @@ public class ProxyNetworking {
   private ProxyNetworking(Builder builder) {
     threadPoolConfiguration = builder.threadPoolConfiguration;
     filterConfiguration = builder.filterConfiguration;
+    chainedProxyManager = builder.chainedProxyManager;
   }
 
   public static Builder builder() {
@@ -44,7 +48,8 @@ public class ProxyNetworking {
   public static class Builder {
     private ThreadPoolConfiguration threadPoolConfiguration;
     private FilterConfiguration filterConfiguration;
-
+    private ChainedProxyManager chainedProxyManager;
+    
     public Builder withThreadPoolConfiguration(ThreadPoolConfiguration threadPoolConfiguration) {
       this.threadPoolConfiguration = threadPoolConfiguration;
       return this;
@@ -55,12 +60,20 @@ public class ProxyNetworking {
       return this;
     }
 
+    public Builder withChainedProxyManager(ChainedProxyManager chainedProxyManager) {
+      this.chainedProxyManager = chainedProxyManager;
+      return this;
+    }
+
     public ProxyNetworking build() {
       if (threadPoolConfiguration == null) {
         threadPoolConfiguration = createThreadPoolConfigurationFromEnvironment();
       }
       if (filterConfiguration == null) {
         filterConfiguration = FilterConfiguration.fromEnvironment();
+      }
+      if (chainedProxyManager == null) {
+        chainedProxyManager = ChainedProxyConfiguration.fromEnvironment();
       }
       return new ProxyNetworking(this);
     }
