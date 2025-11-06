@@ -15,15 +15,20 @@ public class ChainedProxyConfiguration {
     private static final Logger logger = Logger.getLogger(ChainedProxyConfiguration.class.getName());
     
     public static ChainedProxyManager fromEnvironment() {
-        if (System.getenv("FORWARD_PROXY_HOST") == null || System.getenv("FORWARD_PROXY_PORT") == null || System.getenv("FORWARD_PROXY_DATA_SOURCE_HOSTS") == null) {
+        String forwardProxyHost = System.getenv("FORWARD_PROXY_HOST");
+        String forwardProxyPort = System.getenv("FORWARD_PROXY_PORT");
+        String dataSourceHostsEnv = System.getenv("FORWARD_PROXY_DATA_SOURCE_HOSTS");
+        if (forwardProxyHost == null || forwardProxyHost.isEmpty() ||
+            forwardProxyPort == null || forwardProxyPort.isEmpty() ||
+            dataSourceHostsEnv == null || dataSourceHostsEnv.isEmpty()) {
             return (HttpRequest httpRequest,
             Queue<ChainedProxy> chainedProxies,
             ClientDetails clientDetails) -> {
                 chainedProxies.add(ChainedProxyAdapter.FALLBACK_TO_DIRECT_CONNECTION);
             };
         }
-        InetSocketAddress forwardProxy = new InetSocketAddress(System.getenv("FORWARD_PROXY_HOST"), Integer.parseInt(System.getenv("FORWARD_PROXY_PORT"))); 
-        Set<String> dataSourceHosts = Set.of(System.getenv("FORWARD_PROXY_DATA_SOURCE_HOSTS").split(","));
+        InetSocketAddress forwardProxy = new InetSocketAddress(forwardProxyHost, Integer.parseInt(forwardProxyPort)); 
+        Set<String> dataSourceHosts = Set.of(dataSourceHostsEnv.split(","));
         
         ChainedProxyManager chainedProxyManager = (HttpRequest httpRequest,
         Queue<ChainedProxy> chainedProxies,
