@@ -6,8 +6,10 @@ import com.glean.proxy.filters.GCPDisallowInternalAddressFilter;
 import com.glean.proxy.filters.IpAddressRequestFilter;
 import com.glean.proxy.filters.IpAddressRequestFilter.ALLOWED_PROXY_ADDRESS_TYPE;
 import com.glean.proxy.filters.ProxyDebugFilter;
+import com.glean.proxy.filters.ProxyMetricsFilter;
 import com.glean.proxy.filters.UpgradeRequestFilter;
 import com.glean.proxy.filters.helpers.AllowedEgressDomains;
+import com.glean.proxy.metrics.ProxyMetrics;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import java.util.ArrayList;
@@ -78,6 +80,11 @@ public record FilterConfiguration(
                         "true".equalsIgnoreCase(System.getenv("UPGRADE_HTTP_REQUESTS"));
                     return (request, ctx) -> new UpgradeRequestFilter(request, upgradeHttpRequests);
                   },
+                  ProxyMetricsFilter.class.getSimpleName(),
+                  () -> {
+                    final ProxyMetrics metrics = ProxyMetrics.getInstance();
+                    return (request, ctx) -> new ProxyMetricsFilter(request, metrics);
+                  },
 
                   // Debug filters
                   ProxyDebugFilter.class.getSimpleName(),
@@ -123,7 +130,8 @@ public record FilterConfiguration(
         String.join(
             ",",
             IpAddressRequestFilter.class.getSimpleName(),
-            UpgradeRequestFilter.class.getSimpleName());
+            UpgradeRequestFilter.class.getSimpleName(),
+            ProxyMetricsFilter.class.getSimpleName());
     String crossPlatformFiltersString =
         System.getenv().getOrDefault("CROSS_PLATFORM_FILTERS", defaultCrossPlatformFilters);
 
