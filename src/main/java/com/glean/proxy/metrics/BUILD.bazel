@@ -11,6 +11,12 @@ java_library(
         "@maven//:com_google_api_grpc_proto_google_cloud_monitoring_v3",
         "@maven//:com_google_api_grpc_proto_google_common_protos",
         "@maven//:com_google_cloud_google_cloud_monitoring",
+        "@maven//:com_google_cloud_opentelemetry_exporter_metrics",
         "@maven//:com_google_protobuf_protobuf_java",
+        "@maven//:io_opentelemetry_opentelemetry_api",
+        "@maven//:io_opentelemetry_opentelemetry_sdk",
+        "@maven//:io_opentelemetry_opentelemetry_sdk_common",
+        "@maven//:io_opentelemetry_opentelemetry_sdk_metrics",
+        "@maven//:io_opentelemetry_semconv_opentelemetry_semconv",
     ],
 )
