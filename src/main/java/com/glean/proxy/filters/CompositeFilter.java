@@ -50,4 +50,16 @@ public class CompositeFilter extends HttpFiltersAdapter {
     }
     return null;
   }
+
+  @Override
+  public HttpObject proxyToClientResponse(HttpObject httpObject) {
+    HttpObject currentObject = httpObject;
+    for (HttpFilters filter : filters) {
+      HttpObject result = filter.proxyToClientResponse(currentObject);
+      if (result != null) {
+        currentObject = result;
+      }
+    }
+    return currentObject;
+  }
 }

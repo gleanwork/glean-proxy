@@ -19,6 +19,7 @@ java_library(
     deps = [
         "//src/main/java/com/glean/proxy/filters",
         "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/metrics",
         "//src/main/java/com/glean/proxy/schemas",
         "@maven//:io_github_littleproxy_littleproxy",
         "@maven//:io_netty_netty_codec_http",

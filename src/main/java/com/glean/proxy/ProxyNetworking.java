@@ -1,5 +1,7 @@
 package com.glean.proxy;
 
+import com.glean.proxy.metrics.OpenTelemetrySetup;
+import com.glean.proxy.metrics.ProxyMetrics;
 import java.net.InetSocketAddress;
 import java.util.logging.Logger;
 import org.littleshoot.proxy.ChainedProxyManager;
@@ -9,6 +11,7 @@ import org.littleshoot.proxy.impl.ThreadPoolConfiguration;
 
 public class ProxyNetworking {
   private static final Logger logger = Logger.getLogger(ProxyNetworking.class.getName());
+  private static OpenTelemetrySetup openTelemetrySetup;
 
   protected final ThreadPoolConfiguration threadPoolConfiguration;
   protected final FilterConfiguration filterConfiguration;
@@ -69,13 +72,42 @@ public class ProxyNetworking {
       if (threadPoolConfiguration == null) {
         threadPoolConfiguration = createThreadPoolConfigurationFromEnvironment();
       }
+
+      // Initialize metrics exporter before filter configuration, since filters use ProxyMetrics
+      initializeMetricsExporter();
+
       if (filterConfiguration == null) {
         filterConfiguration = FilterConfiguration.fromEnvironment();
       }
       if (chainedProxyManager == null) {
         chainedProxyManager = ChainedProxyConfiguration.fromEnvironment();
       }
+
       return new ProxyNetworking(this);
+    }
+  }
+
+  private static void initializeMetricsExporter() {
+    String gcpProjectId = System.getenv("GCP_PROJECT_ID");
+    String enableMetricsExport = System.getenv("ENABLE_METRICS_EXPORT");
+
+    // Check if metrics export is explicitly disabled
+    if (enableMetricsExport != null &&
+        (enableMetricsExport.equalsIgnoreCase("false") || enableMetricsExport.equals("0"))) {
+      logger.info("Metrics export disabled via ENABLE_METRICS_EXPORT.");
+      return;
+    }
+
+    if (gcpProjectId == null || gcpProjectId.isEmpty()) {
+      logger.warning("Set GCP_PROJECT_ID environment variable to enable metric export.");
+      return;
+    }
+
+    try {
+      openTelemetrySetup = new OpenTelemetrySetup(gcpProjectId);
+      ProxyMetrics.initialize(openTelemetrySetup.getMeter());
+    } catch (Exception e) {
+      logger.severe("Failed to initialize OpenTelemetry: " + e.getMessage());
     }
   }
 
