@@ -36,11 +36,23 @@ public class LegacyRequestFilter extends HttpFiltersAdapter {
       final String[] splitPath = httpRequest.uri().split("/", 4);
       if (splitPath.length < 3) {
         LOGGER.severe(String.format("Unexpected legacy request format: %s", httpRequest.uri()));
+        return createBadRequestResponse("Bad Request to URI: " + httpRequest.uri());
       }
-      if (!"webhook".equals(splitPath[2])) {
-        LOGGER.severe(String.format("Unknown intent: %s", splitPath[2]));
-        return null;
+
+      final String intent = splitPath[2];
+
+      boolean isIntentAllowed = switch (intent) {
+        case "webhook" -> true;
+        case "api", "rest" -> legacyProxy.isApiIngressAllowed();
+        default -> false;
+      };
+
+      if (!isIntentAllowed) {
+        LOGGER.severe(String.format("Unknown or disallowed intent: %s (allowApiIngress=%s)",
+            intent, legacyProxy.isApiIngressAllowed()));
+        return createBadRequestResponse("Bad Request to URI: " + httpRequest.uri());
       }
+
       final String path = httpRequest.uri();
 
       final String target = legacyProxy.getTargetURL(path);
