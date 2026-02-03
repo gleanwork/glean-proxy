@@ -46,6 +46,10 @@ public class OnPremisesProxy {
     return protocolUpgrade;
   }
 
+  public boolean isApiIngressAllowed() {
+    return allowApiIngress;
+  }
+
   public String getTargetURLForUpgradedProtocol(String pathWithPrefix) {
     return String.format(
         "%s%s", webhookTarget.replaceFirst("^http://", "https://"), pathWithPrefix);
