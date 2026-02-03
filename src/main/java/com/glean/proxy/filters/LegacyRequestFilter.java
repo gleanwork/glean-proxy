@@ -93,6 +93,7 @@ public class LegacyRequestFilter extends HttpFiltersAdapter {
             HttpResponseStatus.BAD_REQUEST,
             Unpooled.copiedBuffer(message, CharsetUtil.UTF_8));
     response.headers().set("Content-Type", "text/plain; charset=UTF-8");
+    response.headers().set("Content-Length", response.content().readableBytes());
     return response;
   }
 }
