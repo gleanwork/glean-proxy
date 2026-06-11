@@ -37,14 +37,43 @@ public class DynamicHttpFiltersSourceAdapter extends HttpFiltersSourceAdapter {
     debugFilters = new ArrayList<>(config.debugFilters());
   }
 
-  // Adding a 5 MB buffer to ensure the HttpRequest is aggregated. Without this, the request may be
-  // received in chunks. This is necessary because we handle proxy-to-server connections ourselves
-  // for requests coming from the customer. By enabling aggregation, we avoid having to manually
-  // handle chunked requests. Note that the requests with size greater than 5 MB will automatically
-  // be rejected at an upper layer.
+  // Aggregate the request body so filters can operate on a FullHttpRequest. Requests larger than
+  // this cap are rejected with HTTP 413 by Netty's HttpObjectAggregator before any filter runs.
+  // Override the default 5 MB cap via MAX_REQUEST_BUFFER_BYTES — required for endpoints like
+  // /api/index/v1/indexdocuments where customers send payloads well over 5 MB.
+  private static final int DEFAULT_MAX_REQUEST_BUFFER_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  private static final int MAX_REQUEST_BUFFER_BYTES = resolveMaxRequestBufferBytes();
+
+  private static int resolveMaxRequestBufferBytes() {
+    String raw = System.getenv("MAX_REQUEST_BUFFER_BYTES");
+    if (raw == null || raw.isBlank()) {
+      return DEFAULT_MAX_REQUEST_BUFFER_BYTES;
+    }
+    try {
+      int parsed = Integer.parseInt(raw.trim());
+      if (parsed <= 0) {
+        logger.warning(
+            "MAX_REQUEST_BUFFER_BYTES must be positive; got "
+                + parsed
+                + ". Falling back to default "
+                + DEFAULT_MAX_REQUEST_BUFFER_BYTES);
+        return DEFAULT_MAX_REQUEST_BUFFER_BYTES;
+      }
+      return parsed;
+    } catch (NumberFormatException e) {
+      logger.warning(
+          "MAX_REQUEST_BUFFER_BYTES is not a valid integer: '"
+              + raw
+              + "'. Falling back to default "
+              + DEFAULT_MAX_REQUEST_BUFFER_BYTES);
+      return DEFAULT_MAX_REQUEST_BUFFER_BYTES;
+    }
+  }
+
   @Override
   public int getMaximumRequestBufferSizeInBytes() {
-    return 5 * 1024 * 1024; // 5 mb
+    return MAX_REQUEST_BUFFER_BYTES;
   }
 
   @Override
