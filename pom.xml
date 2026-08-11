@@ -75,6 +75,18 @@
             <version>2.0.13</version>
         </dependency>
 
+        <!-- OpenCensus for metrics -->
+        <dependency>
+            <groupId>io.opencensus</groupId>
+            <artifactId>opencensus-api</artifactId>
+            <version>0.31.1</version>
+        </dependency>
+        <dependency>
+            <groupId>io.opencensus</groupId>
+            <artifactId>opencensus-exporter-stats-stackdriver</artifactId>
+            <version>0.31.1</version>
+        </dependency>
+
         <!-- Annotation processors -->
         <dependency>
             <groupId>com.uber.nullaway</groupId>

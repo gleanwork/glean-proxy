@@ -1,6 +1,32 @@
 workspace(name = "com_github_gleanwork_glean-proxy")
 
+load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies", "aspect_bazel_lib_register_toolchains")
+load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
+load("@aspect_rules_lint//format:repositories.bzl", "rules_lint_dependencies")
+load("@aspect_rules_lint//lint:pmd.bzl", "fetch_pmd")
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@contrib_rules_jvm//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
+
+# Fetches the contrib_rules_jvm dependencies.
+# If you want to have a different version of some dependency,
+# you should fetch it *before* calling this.
+load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
+
+# Now ensure that the downloaded deps are properly configured
+load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@maven//:defs.bzl", "pinned_maven_install")
+load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
+load("@rules_jvm_external//:defs.bzl", "maven_install")
+load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
+load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
+load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
+load("@rules_oci//oci:pull.bzl", "oci_pull")
+load("@rules_oci//oci:repositories.bzl", "oci_register_toolchains")
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies")
 
 http_archive(
     name = "platforms",
@@ -18,8 +44,6 @@ http_archive(
     url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.16.0/bazel_features-v1.16.0.tar.gz",
 )
 
-load("@bazel_features//:deps.bzl", "bazel_features_deps")
-
 bazel_features_deps()
 
 http_archive(
@@ -29,8 +53,6 @@ http_archive(
         "https://github.com/bazelbuild/rules_pkg/releases/download/0.10.1/rules_pkg-0.10.1.tar.gz",
     ],
 )
-
-load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
 
 rules_pkg_dependencies()
 
@@ -43,11 +65,7 @@ http_archive(
     url = "https://github.com/aspect-build/rules_lint/releases/download/v1.0.2/rules_lint-v1.0.2.tar.gz",
 )
 
-load("@aspect_rules_lint//format:repositories.bzl", "rules_lint_dependencies")
-
 rules_lint_dependencies()
-
-load("@aspect_rules_lint//lint:pmd.bzl", "fetch_pmd")
 
 fetch_pmd()
 
@@ -57,8 +75,6 @@ http_archive(
     strip_prefix = "bazel-lib-2.8.1",
     url = "https://github.com/aspect-build/bazel-lib/releases/download/v2.8.1/bazel-lib-v2.8.1.tar.gz",
 )
-
-load("@aspect_bazel_lib//lib:repositories.bzl", "aspect_bazel_lib_dependencies", "aspect_bazel_lib_register_toolchains")
 
 aspect_bazel_lib_dependencies()
 
@@ -73,8 +89,6 @@ http_archive(
     ],
 )
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-
 go_rules_dependencies()
 
 go_register_toolchains(go_version = "1.23.7")
@@ -88,8 +102,6 @@ http_archive(
     ],
 )
 
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-
 gazelle_dependencies(go_sdk = "go_sdk")
 
 http_archive(
@@ -98,8 +110,6 @@ http_archive(
     strip_prefix = "rules_proto-6.0.0",
     url = "https://github.com/bazelbuild/rules_proto/releases/download/6.0.0/rules_proto-6.0.0.tar.gz",
 )
-
-load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies")
 
 rules_proto_dependencies()
 
@@ -110,8 +120,6 @@ http_archive(
         "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
     ],
 )
-
-load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
 
 rules_java_dependencies()
 
@@ -140,21 +148,11 @@ http_archive(
     url = "https://github.com/bazel-contrib/rules_jvm/releases/download/v0.27.0/rules_jvm-v0.27.0.tar.gz",
 )
 
-# Fetches the contrib_rules_jvm dependencies.
-# If you want to have a different version of some dependency,
-# you should fetch it *before* calling this.
-load("@contrib_rules_jvm//:repositories.bzl", "contrib_rules_jvm_deps", "contrib_rules_jvm_gazelle_deps")
-
 contrib_rules_jvm_deps()
 
 contrib_rules_jvm_gazelle_deps()
 
-# Now ensure that the downloaded deps are properly configured
-load("@contrib_rules_jvm//:setup.bzl", "contrib_rules_jvm_setup")
-
 contrib_rules_jvm_setup()
-
-load("@contrib_rules_jvm//:gazelle_setup.bzl", "contrib_rules_jvm_gazelle_setup")
 
 contrib_rules_jvm_gazelle_setup()
 
@@ -169,11 +167,7 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz" % (RULES_JVM_EXTERNAL_TAG, RULES_JVM_EXTERNAL_TAG),
 )
 
-load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
-
 rules_jvm_external_deps()
-
-load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
 
 rules_jvm_external_setup()
 
@@ -184,13 +178,9 @@ http_archive(
     url = "https://github.com/aspect-build/rules_js/releases/download/v2.3.7/rules_js-v2.3.7.tar.gz",
 )
 
-load("@aspect_rules_js//js:repositories.bzl", "rules_js_dependencies")
-
 # This pulls in nodejs env and other aspect bazel lib set up for us.
 # https://github.com/aspect-build/rules_js/blob/066df77bd0dd6247ffd9ec728bbdcf6f6203f2e0/js/repositories.bzl#L21
 rules_js_dependencies()
-
-load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 maven_install(
     artifacts = [
@@ -199,10 +189,18 @@ maven_install(
         # This was downgraded, so we can keep netty at 4.1.*
         "io.github.littleproxy:littleproxy:2.4.0",
         "io.netty:netty-codec-http:4.1.127.Final",
+        "com.google.cloud:google-cloud-monitoring:3.52.0",
         "org.apache.httpcomponents:httpclient:4.5.14",
         "com.uber.nullaway:nullaway:0.10.9",
         "org.mockito:mockito-core:5.12.0",
         "org.slf4j:slf4j-jdk14:2.0.13",
+        "io.opentelemetry:opentelemetry-api:1.44.1",
+        "io.opentelemetry:opentelemetry-sdk:1.44.1",
+        "io.opentelemetry:opentelemetry-sdk-common:1.44.1",
+        "io.opentelemetry:opentelemetry-sdk-metrics:1.44.1",
+        "io.opentelemetry:opentelemetry-exporter-otlp:1.44.1",
+        "io.opentelemetry.semconv:opentelemetry-semconv:1.28.0-alpha",
+        "com.google.cloud.opentelemetry:exporter-metrics:0.33.0",
     ],
     fetch_sources = True,
     maven_install_json = "//:maven_install.json",
@@ -210,8 +208,6 @@ maven_install(
         "https://repo1.maven.org/maven2",
     ],
 )
-
-load("@maven//:defs.bzl", "pinned_maven_install")
 
 pinned_maven_install()
 
@@ -222,15 +218,9 @@ http_archive(
     url = "https://github.com/bazel-contrib/rules_oci/releases/download/v2.0.1/rules_oci-v2.0.1.tar.gz",
 )
 
-load("@rules_oci//oci:dependencies.bzl", "rules_oci_dependencies")
-
 rules_oci_dependencies()
 
-load("@rules_oci//oci:repositories.bzl", "oci_register_toolchains")
-
 oci_register_toolchains(name = "oci")
-
-load("@rules_oci//oci:pull.bzl", "oci_pull")
 
 oci_pull(
     name = "distroless_java17",

@@ -79,6 +79,13 @@ GleanProxy is configured through environment variables. By default, the set of f
 |---------------------|-------------|---------|
 | `CLOUD_PLATFORM` | Cloud platform (`AWS` or `GOOGLE`) | None |
 
+### Metrics Configuration
+
+| Variable | Description | Default |
+|---------------------|-------------|---------|
+| `GCP_PROJECT_ID` | GCP project ID for Stackdriver metrics export | None |
+| `ENABLE_METRICS_EXPORT` | Enable/disable metrics export to Stackdriver (true/false) | Enabled if `GCP_PROJECT_ID` is set |
+
 ### Filter Configuration Variables
 
 | Variable | Description | Default |
@@ -177,6 +184,24 @@ curl localhost:8080/liveness_check
 # Proxy a request
 curl --proxy localhost:8080 https://www.glean.com
 ```
+
+### Running with Metrics Export
+
+To export metrics to GCP Cloud Monitoring (Stackdriver):
+
+```bash
+export CLOUD_PLATFORM=GOOGLE
+export GCP_PROJECT_ID=your-gcp-project-id
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+
+bazel run //src/main/java/com/glean/proxy:ProxyMain 8080
+```
+
+Metrics are exported every 60 seconds and include:
+- `proxy/request_count` - Total number of requests (labeled by status_code, method)
+- `proxy/request_latency` - Request latency distribution in milliseconds (labeled by status_code, method)
+
+To run locally without exporting metrics, omit `GCP_PROJECT_ID` or set `ENABLE_METRICS_EXPORT=false`.
 
 ## Contributing
 

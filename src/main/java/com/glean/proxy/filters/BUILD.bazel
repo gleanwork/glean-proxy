@@ -8,6 +8,7 @@ java_library(
     visibility = ["//visibility:public"],
     deps = [
         "//src/main/java/com/glean/proxy/filters/helpers",
+        "//src/main/java/com/glean/proxy/metrics",
         "//src/main/java/com/glean/proxy/schemas",
         "@maven//:com_google_code_gson_gson",
         "@maven//:io_github_littleproxy_littleproxy",
