@@ -12,6 +12,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +58,11 @@ public record FilterConfiguration(
                   () -> {
                     String proxyType = System.getenv("PROXY_TYPE");
                     String gkeServiceIpRange = System.getenv("GKE_SERVICE_IP_RANGE");
+                    List<String> privateIpAllowlist =
+                        parseCommaSeparatedEnv("PRIVATE_IP_ALLOWLIST");
                     return (request, ctx) ->
-                        new GCPDisallowInternalAddressFilter(request, proxyType, gkeServiceIpRange);
+                        new GCPDisallowInternalAddressFilter(
+                            request, proxyType, gkeServiceIpRange, privateIpAllowlist);
                   },
 
                   // Cross-platform filters
@@ -160,5 +164,20 @@ public record FilterConfiguration(
     }
 
     return filters;
+  }
+
+  private static List<String> parseCommaSeparatedEnv(String envVar) {
+    String value = System.getenv(envVar);
+    if (value == null || value.isBlank()) {
+      return Collections.emptyList();
+    }
+    List<String> result = new ArrayList<>();
+    for (String part : value.split(",")) {
+      String trimmed = part.trim();
+      if (!trimmed.isEmpty()) {
+        result.add(trimmed);
+      }
+    }
+    return Collections.unmodifiableList(result);
   }
 }
