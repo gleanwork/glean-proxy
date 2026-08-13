@@ -10,6 +10,9 @@ import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -106,5 +109,59 @@ public class GCPDisallowInternalAddressFilterTest {
     filter.proxyToServerResolutionSucceeded("10.64.32.2", address);
     HttpResponse response = filter.proxyToServerRequest(mock(HttpObject.class));
     verifyHttpResponse(response, "Unknown proxy type: TGW", 500);
+  }
+
+  // --- Allowlist tests ---
+
+  @Test
+  public void test_Transit_private_routedInbound_allowlisted() throws Exception {
+    InetSocketAddress address = new InetSocketAddress("10.13.2.5", 8080);
+    when(nicResolver.resolve("10.13.2.5")).thenReturn("eth1");
+    List<String> allowlist = Arrays.asList("10.13.0.0/23", "10.13.2.0/24");
+    GCPDisallowInternalAddressFilter filter =
+        new GCPDisallowInternalAddressFilter(
+            request, "TRANSIT", nicResolver, testGkeServiceIpRange, allowlist);
+    filter.proxyToServerResolutionSucceeded("10.13.2.5:8080", address);
+
+    assertThat(filter.proxyToServerRequest(mock(HttpObject.class))).isNull();
+  }
+
+  @Test
+  public void test_Transit_private_routedInbound_notInAllowlist() throws Exception {
+    InetSocketAddress address = new InetSocketAddress("10.64.32.2", 8080);
+    when(nicResolver.resolve("10.64.32.2")).thenReturn("eth1");
+    List<String> allowlist = Arrays.asList("10.13.0.0/23", "10.13.2.0/24");
+    GCPDisallowInternalAddressFilter filter =
+        new GCPDisallowInternalAddressFilter(
+            request, "TRANSIT", nicResolver, testGkeServiceIpRange, allowlist);
+    filter.proxyToServerResolutionSucceeded("10.64.32.2:8080", address);
+
+    HttpResponse response = filter.proxyToServerRequest(mock(HttpObject.class));
+    verifyHttpResponse(response, "Ingress Route not allowed For Private IPs: 10.64.32.2", 403);
+  }
+
+  @Test
+  public void test_StandAlone_private_allowlisted() throws Exception {
+    InetSocketAddress address = new InetSocketAddress("10.13.40.1", 8080);
+    List<String> allowlist = Collections.singletonList("10.13.40.0/22");
+    GCPDisallowInternalAddressFilter filter =
+        new GCPDisallowInternalAddressFilter(
+            request, "STANDALONE", nicResolver, testGkeServiceIpRange, allowlist);
+    filter.proxyToServerResolutionSucceeded("10.13.40.1:8080", address);
+
+    assertThat(filter.proxyToServerRequest(mock(HttpObject.class))).isNull();
+  }
+
+  @Test
+  public void test_Transit_private_emptyAllowlist_stillBlocks() throws Exception {
+    InetSocketAddress address = new InetSocketAddress("10.13.2.5", 8080);
+    when(nicResolver.resolve("10.13.2.5")).thenReturn("eth1");
+    GCPDisallowInternalAddressFilter filter =
+        new GCPDisallowInternalAddressFilter(
+            request, "TRANSIT", nicResolver, testGkeServiceIpRange, Collections.emptyList());
+    filter.proxyToServerResolutionSucceeded("10.13.2.5:8080", address);
+
+    HttpResponse response = filter.proxyToServerRequest(mock(HttpObject.class));
+    verifyHttpResponse(response, "Ingress Route not allowed For Private IPs: 10.13.2.5", 403);
   }
 }

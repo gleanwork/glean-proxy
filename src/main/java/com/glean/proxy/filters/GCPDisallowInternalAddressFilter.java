@@ -12,6 +12,9 @@ import io.netty.handler.ipfilter.IpFilterRuleType;
 import io.netty.handler.ipfilter.IpSubnetFilterRule;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.littleshoot.proxy.HttpFiltersAdapter;
 
 /**
@@ -23,16 +26,36 @@ public class GCPDisallowInternalAddressFilter extends HttpFiltersAdapter {
   private final String proxyType;
   private NicResolver nicResolver;
   private final String gkeServiceIpRange;
+  private final List<IpSubnetFilterRule> privateIpAllowlist;
 
   private HttpResponse response;
 
   public GCPDisallowInternalAddressFilter(
-      HttpRequest originalRequest, String proxyType, String gkeServiceIpRange) {
+      HttpRequest originalRequest,
+      String proxyType,
+      String gkeServiceIpRange,
+      List<String> privateIpAllowlistCidrs) {
     super(originalRequest);
     this.proxyType = proxyType;
     this.nicResolver = new CachedNicResolver(new IpRouteNicResolver());
     this.gkeServiceIpRange = gkeServiceIpRange;
+    this.privateIpAllowlist = buildAllowlistRules(privateIpAllowlistCidrs);
     this.response = null;
+  }
+
+  public GCPDisallowInternalAddressFilter(
+      HttpRequest originalRequest, String proxyType, String gkeServiceIpRange) {
+    this(originalRequest, proxyType, gkeServiceIpRange, Collections.emptyList());
+  }
+
+  protected GCPDisallowInternalAddressFilter(
+      HttpRequest originalRequest,
+      String proxyType,
+      NicResolver nicResolver,
+      String gkeServiceIpRange,
+      List<String> privateIpAllowlistCidrs) {
+    this(originalRequest, proxyType, gkeServiceIpRange, privateIpAllowlistCidrs);
+    this.nicResolver = nicResolver;
   }
 
   protected GCPDisallowInternalAddressFilter(
@@ -40,8 +63,7 @@ public class GCPDisallowInternalAddressFilter extends HttpFiltersAdapter {
       String proxyType,
       NicResolver nicResolver,
       String gkeServiceIpRange) {
-    this(originalRequest, proxyType, gkeServiceIpRange);
-    this.nicResolver = nicResolver;
+    this(originalRequest, proxyType, nicResolver, gkeServiceIpRange, Collections.emptyList());
   }
 
   // This runs after proxyToServerResolutionSucceeded which updates the response variable if
@@ -67,7 +89,7 @@ public class GCPDisallowInternalAddressFilter extends HttpFiltersAdapter {
 
     switch (proxyType) {
       case "STANDALONE":
-        if (isPrivateIp) {
+        if (isPrivateIp && !isAllowlisted(resolvedIp)) {
           response =
               Utils.createHTTPResponse(
                   String.format("Ingress Route not allowed For Private IPs: %s", resolvedIp),
@@ -87,7 +109,8 @@ public class GCPDisallowInternalAddressFilter extends HttpFiltersAdapter {
           return;
         }
         // if routed towards an internal service and its a private ip, Do not allow
-        if (nic.equals("eth1") && isPrivateIp) {
+        // unless the IP is in the allowlist
+        if (nic.equals("eth1") && isPrivateIp && !isAllowlisted(resolvedIp)) {
           response =
               Utils.createHTTPResponse(
                   String.format("Ingress Route not allowed For Private IPs: %s", resolvedIp),
@@ -100,6 +123,33 @@ public class GCPDisallowInternalAddressFilter extends HttpFiltersAdapter {
                 String.format("Unknown proxy type: %s", proxyType),
                 HttpResponseStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  private boolean isAllowlisted(String ipAddress) {
+    if (privateIpAllowlist.isEmpty()) {
+      return false;
+    }
+    InetSocketAddress socketAddress = new InetSocketAddress(ipAddress, 0);
+    for (IpSubnetFilterRule rule : privateIpAllowlist) {
+      if (rule.matches(socketAddress)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static List<IpSubnetFilterRule> buildAllowlistRules(List<String> cidrs) {
+    if (cidrs == null || cidrs.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<IpSubnetFilterRule> rules = new ArrayList<>(cidrs.size());
+    for (String cidr : cidrs) {
+      String trimmed = cidr.trim();
+      if (!trimmed.isEmpty()) {
+        rules.add(new IpSubnetFilterRule(trimmed, IpFilterRuleType.ACCEPT));
+      }
+    }
+    return Collections.unmodifiableList(rules);
   }
 
   private boolean isPrivateAddress(InetAddress address) {
